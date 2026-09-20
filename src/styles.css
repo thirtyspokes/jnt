@@ -46,7 +46,11 @@ h1, h2, h3, h4 { margin: 0; font-weight: 650; }
 button { font-family: inherit; cursor: pointer; }
 input, select { font-family: inherit; }
 
-.app { max-width: 1080px; margin: 0 auto; padding: 0 16px 64px; }
+/* mobile overflow hardening: never scroll sideways, never let a control exceed its box */
+html, body { overflow-x: hidden; }
+input, select, textarea { max-width: 100%; }
+
+.app { width: 100%; max-width: min(1080px, 100vw); margin: 0 auto; padding: 0 16px 64px; }
 
 /* ---- top bar ---- */
 .topbar {
@@ -113,7 +117,7 @@ input, select { font-family: inherit; }
 
 /* ---- counts ---- */
 .count-row { display: flex; gap: 24px; flex-wrap: wrap; }
-.count-control { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex: 1; min-width: 240px; }
+.count-control { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex: 1; min-width: 200px; }
 .count-control > span { font-size: 14px; font-weight: 600; }
 .stepper { display: flex; align-items: center; gap: 4px; }
 .stepper button {
@@ -150,13 +154,14 @@ input, select { font-family: inherit; }
 /* ---- custom exercises ---- */
 .custom-add { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .custom-add input[type='text'] {
-  flex: 1; min-width: 180px; padding: 9px 12px; border-radius: 8px;
+  flex: 1 1 100%; min-width: 0; padding: 9px 12px; border-radius: 8px;
   border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 14px;
 }
 .custom-add select {
-  padding: 9px 10px; border-radius: 8px; border: 1px solid var(--border);
+  flex: 1; min-width: 0; padding: 9px 10px; border-radius: 8px; border: 1px solid var(--border);
   background: var(--surface-2); color: var(--text); font-size: 13.5px;
 }
+.add-custom-btn { flex: 0 0 auto; }
 .add-custom-btn {
   border: 1px solid var(--accent); background: var(--accent); color: #fff;
   padding: 9px 18px; border-radius: 8px; font-weight: 650; font-size: 14px;
@@ -389,11 +394,11 @@ input, select { font-family: inherit; }
   display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 16px;
 }
 .unc-lift {
-  display: flex; align-items: center; gap: 9px;
+  display: flex; align-items: center; gap: 9px; min-width: 0;
   padding: 9px 11px; border-radius: 10px; background: var(--surface); border: 1px solid var(--border);
 }
 .unc-lift.is-t1 { grid-column: 1 / -1; border-color: color-mix(in srgb, var(--t1) 40%, var(--border)); }
-.unc-name { font-size: 14px; font-weight: 600; }
+.unc-name { font-size: 14px; font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .unc-detail { margin-left: auto; font-size: 12px; font-weight: 600; color: var(--accent); white-space: nowrap; }
 
 .up-next.done {
@@ -639,7 +644,8 @@ input, select { font-family: inherit; }
   .day-cards { grid-template-columns: repeat(2, 1fr); }
   .prog-body { grid-template-columns: 1fr; }
   .mm-body { grid-template-columns: 1fr; }
-  .unc-lifts { grid-template-columns: 1fr; }
+  .unc-lifts { grid-template-columns: minmax(0, 1fr); }
+  .count-control { min-width: 100%; }
 }
 @media (max-width: 420px) {
   .day-cards { grid-template-columns: 1fr; }
