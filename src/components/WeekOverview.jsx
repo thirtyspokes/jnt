@@ -2,6 +2,7 @@ import { metaForWeek } from '../program/progression.js'
 import { buildDay, daysInWeek } from '../program/generate.js'
 import { nextSession, sessionNumber, totalSessions } from '../program/sessions.js'
 import DayCard from './DayCard.jsx'
+import EndOfCycle from './EndOfCycle.jsx'
 
 const WEEKS = Array.from({ length: 12 }, (_, i) => i + 1)
 
@@ -41,18 +42,21 @@ function UpNextCard({ week, dayIndex, profile, onOpenDay }) {
   )
 }
 
-export default function WeekOverview({ profile, logs, onOpenWeek, onOpenDay }) {
+export default function WeekOverview({ profile, logs, cycleNumber, onOpenWeek, onOpenDay, onStartNextCycle }) {
   const next = nextSession(logs, profile)
 
   return (
     <div className="overview">
+      {cycleNumber != null && <div className="cycle-badge">Cycle {cycleNumber}</div>}
       {next ? (
         <UpNextCard week={next.week} dayIndex={next.dayIndex} profile={profile} onOpenDay={onOpenDay} />
       ) : (
-        <div className="up-next done">
-          <div className="un-label">Program complete 🎉</div>
-          <p className="hint">All {totalSessions(profile)} sessions logged. Time to retest and run it back.</p>
-        </div>
+        <EndOfCycle
+          profile={profile}
+          logs={logs}
+          cycleNumber={cycleNumber ?? 1}
+          onStartNextCycle={onStartNextCycle}
+        />
       )}
 
       <p className="hint overview-hint">

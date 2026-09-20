@@ -13,6 +13,8 @@ export const DEFAULT_PROFILE = {
   custom: { t2: [], t3: [] }, // lifter-defined exercises
   selections: DEFAULT_SELECTIONS,
   dayOrder: [0, 1, 2, 3], // display/session order of days (stable ids 0-3, +4 when 5th on)
+  cycleStartedAt: null, // when the active cycle began (set on "start next cycle")
+  cycleStartMaxes: null, // snapshot of the 1RMs this cycle started from (baseline for gains)
   // Optional accessory-focused 5th day (off by default).
   fifthDay: { enabled: false, count: 4, lifts: ['bb_row', 'lat_pulldown', 'ez_curl', 'calf_raise'] },
 }

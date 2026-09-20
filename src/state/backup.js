@@ -3,6 +3,7 @@
 
 const PROFILE_KEY = 'jnt.profile.v1'
 const LOGS_KEY = 'jnt.logs.v1'
+const CYCLES_KEY = 'jnt.cycles.v1'
 export const BACKUP_SCHEMA = 1
 
 function readKey(key) {
@@ -21,6 +22,7 @@ export function buildBackup() {
     exportedAt: new Date().toISOString(),
     profile: readKey(PROFILE_KEY),
     logs: readKey(LOGS_KEY),
+    cycles: readKey(CYCLES_KEY),
   }
 }
 
@@ -63,6 +65,7 @@ export function parseBackup(text) {
 export function applyBackup(obj) {
   if (obj.profile != null) localStorage.setItem(PROFILE_KEY, JSON.stringify(obj.profile))
   if (obj.logs != null) localStorage.setItem(LOGS_KEY, JSON.stringify(obj.logs))
+  if (obj.cycles != null) localStorage.setItem(CYCLES_KEY, JSON.stringify(obj.cycles))
 }
 
 // Count what's in a parsed backup, for the restore confirmation.

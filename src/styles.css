@@ -222,7 +222,7 @@ input, select, textarea { max-width: 100%; font-size: 16px !important; }
   background: var(--surface); color: var(--text); font-size: 13.5px; min-width: 0;
 }
 
-.setup-actions { display: flex; justify-content: flex-end; }
+.setup-actions { display: flex; justify-content: flex-end; margin: 8px 0 24px; }
 .primary {
   background: var(--accent); color: #fff; border: none; padding: 12px 22px;
   border-radius: 10px; font-size: 15px; font-weight: 650;
@@ -407,6 +407,44 @@ input, select, textarea { max-width: 100%; font-size: 16px !important; }
   font-size: 10.5px; font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums;
 }
 .day-card.done .dc-num { right: 30px; } /* make room for the ✓ */
+
+/* cycle badge + end-of-cycle screen */
+.cycle-badge {
+  display: inline-block; font-size: 11px; font-weight: 800; letter-spacing: 0.5px;
+  text-transform: uppercase; color: var(--accent); background: var(--accent-soft);
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  padding: 4px 10px; border-radius: 999px; margin-bottom: 12px;
+}
+.eoc {
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--border));
+  background: var(--accent-soft); border-radius: var(--radius);
+  padding: 20px; margin-bottom: 18px; box-shadow: var(--shadow);
+}
+.eoc-hero { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+.eoc-emoji { font-size: 30px; }
+.eoc-hero h2 { font-size: 20px; }
+.eoc-lifts {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+  padding: 4px 14px; margin-bottom: 14px;
+}
+.eoc-lift {
+  display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 12px;
+  padding: 11px 0; border-top: 1px solid var(--border);
+}
+.eoc-lift:first-child { border-top: none; }
+.eoc-name { font-weight: 650; font-size: 14.5px; }
+.eoc-nums { font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.eoc-nums strong { color: var(--text); }
+.eoc-delta { font-size: 14px; font-weight: 800; font-variant-numeric: tabular-nums; min-width: 44px; text-align: right; color: var(--muted); }
+.eoc-delta.up { color: var(--t3); }
+.eoc-delta.down { color: #ef4444; }
+.eoc-total { margin: 0 0 14px; font-size: 15px; font-weight: 700; color: var(--t3); text-align: center; }
+.eoc-tip {
+  font-size: 13px; line-height: 1.5; color: var(--text);
+  background: var(--surface); border: 1px dashed var(--border); border-radius: 10px;
+  padding: 11px 13px; margin-bottom: 16px;
+}
+.eoc-start { width: 100%; }
 
 /* up-next hero card on the plan overview */
 .un-label {

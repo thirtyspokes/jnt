@@ -1,6 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useProfile, numericProfile, hasAllMaxes, DEFAULT_PROFILE } from './state/useProfile.js'
 import { useLogs } from './state/useLogs.js'
+import { useCycles } from './state/useCycles.js'
+import { testedMax } from './program/cycles.js'
 import Setup from './components/Setup.jsx'
 import WeekOverview from './components/WeekOverview.jsx'
 import WeekDetail from './components/WeekDetail.jsx'
@@ -11,11 +13,22 @@ import ConfirmModal from './components/ConfirmModal.jsx'
 export default function App() {
   const [profile, setProfile] = useProfile()
   const [logs, logApi] = useLogs()
+  const [cycles, cyclesApi] = useCycles()
   const ready = hasAllMaxes(profile)
   const [tab, setTab] = useState('setup') // 'setup' | 'plan' | 'progress'
   const [weekView, setWeekView] = useState(null) // null = overview, else week number
   const [dayView, setDayView] = useState(null) // { week, dayIndex } standalone day view
   const [confirmReset, setConfirmReset] = useState(false)
+  const [confirmNextCycle, setConfirmNextCycle] = useState(false)
+  const cycleNumber = cycles.length + 1
+
+  // Capture this cycle's starting maxes once the lifter has entered all four,
+  // so end-of-cycle gains have a stable baseline (test-day recalcs won't move it).
+  useEffect(() => {
+    if (hasAllMaxes(profile) && !profile.cycleStartMaxes) {
+      setProfile((p) => ({ ...p, cycleStartMaxes: { ...p.oneRM } }))
+    }
+  }, [profile, setProfile])
 
   const openPlan = () => {
     setWeekView(null)
@@ -57,11 +70,42 @@ export default function App() {
 
   const startFromScratch = () => {
     logApi.clearAll()
+    cyclesApi.clearAll()
     setProfile(structuredClone(DEFAULT_PROFILE))
     setWeekView(null)
     setDayView(null)
     setConfirmReset(false)
     setTab('setup')
+  }
+
+  // Archive the finished cycle, then start a fresh one: keep the setup, carry
+  // the end-of-program tested maxes forward, reset autoreg + logs.
+  const startNextCycle = () => {
+    cyclesApi.archive({
+      id: `c-${Date.now()}`,
+      number: cycleNumber,
+      startedAt: profile.cycleStartedAt ?? null,
+      archivedAt: new Date().toISOString(),
+      profile: structuredClone(profile),
+      logs: structuredClone(logs),
+    })
+    const oneRM = { ...profile.oneRM }
+    for (const key of ['squat', 'bench', 'deadlift', 'ohp']) {
+      const t = testedMax(key, logs)
+      if (t != null) oneRM[key] = String(t)
+    }
+    setProfile((p) => ({
+      ...p,
+      oneRM,
+      tmAdjust: { squat: 0, bench: 0, deadlift: 0, ohp: 0 },
+      cycleStartedAt: new Date().toISOString(),
+      cycleStartMaxes: { ...oneRM }, // baseline for the new cycle = carried-forward maxes
+    }))
+    logApi.clearAll()
+    setWeekView(null)
+    setDayView(null)
+    setConfirmNextCycle(false)
+    setTab('plan')
   }
 
   const daySession = dayView ? logs[`${dayView.week}-${dayView.dayIndex}`] || null : null
@@ -124,7 +168,14 @@ export default function App() {
           />
         )}
         {tab === 'plan' && dayView == null && weekView == null && (
-          <WeekOverview profile={np} logs={logs} onOpenWeek={setWeekView} onOpenDay={openDay} />
+          <WeekOverview
+            profile={np}
+            logs={logs}
+            cycleNumber={cycleNumber}
+            onOpenWeek={setWeekView}
+            onOpenDay={openDay}
+            onStartNextCycle={() => setConfirmNextCycle(true)}
+          />
         )}
         {tab === 'plan' && dayView == null && weekView != null && (
           <WeekDetail
@@ -138,6 +189,16 @@ export default function App() {
         )}
         {tab === 'progress' && <Progress profile={np} logs={logs} />}
       </main>
+
+      {confirmNextCycle && (
+        <ConfirmModal
+          title={`Start cycle ${cycleNumber + 1}?`}
+          message="This archives your completed cycle, carries your tested maxes forward as your new 1RMs, and resets the plan to Week 1. Your setup is kept and the finished cycle stays saved."
+          confirmLabel="Start next cycle"
+          onConfirm={startNextCycle}
+          onCancel={() => setConfirmNextCycle(false)}
+        />
+      )}
 
       {confirmReset && (
         <ConfirmModal
