@@ -1,6 +1,6 @@
 import { metaForWeek } from '../program/progression.js'
-import { DAYS } from '../program/exercises.js'
 import { weeklyVolume } from '../program/muscles.js'
+import { daysInWeek } from '../program/generate.js'
 import DayCard from './DayCard.jsx'
 import MuscleMap from './MuscleMap.jsx'
 
@@ -27,7 +27,7 @@ export default function WeekDetail({ week, profile, logs, onOpenDay, onBack, onG
       </div>
 
       <div className="day-cards wd-days">
-        {DAYS.map((d) => (
+        {daysInWeek(week, profile).map((d) => (
           <DayCard
             key={d.index}
             week={week}
@@ -43,7 +43,7 @@ export default function WeekDetail({ week, profile, logs, onOpenDay, onBack, onG
         <h2>Muscle coverage — Week {week}</h2>
         <p className="hint">
           Weekly working sets each muscle group gets this week (primary lifts
-          count 1, secondary ½). Darker = more volume; “gap” flags a group with
+          count 1, secondary ½). Brighter = more volume; “gap” flags a group with
           none.
         </p>
         <MuscleMap volume={weeklyVolume(week, profile)} />

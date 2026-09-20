@@ -1,12 +1,11 @@
 import { Fragment, useEffect, useState } from 'react'
-import { buildDay } from '../program/generate.js'
+import { buildDay, daysInWeek } from '../program/generate.js'
 import { estimated1RM } from '../program/estimate.js'
 import { REST_SECONDS } from '../program/progression.js'
-import { DAYS } from '../program/exercises.js'
 import { loggedDayVolume } from '../program/muscles.js'
 import { suggestT1, t2aOverloadTip, previousT3Weight } from '../program/coaching.js'
 import { t1Signal, t2aSignal } from '../program/autoreg.js'
-import { sessionNumber, TOTAL_SESSIONS } from '../program/sessions.js'
+import { sessionNumber, totalSessions } from '../program/sessions.js'
 import MuscleMap from './MuscleMap.jsx'
 
 const tierClass = (tier) =>
@@ -172,10 +171,10 @@ function RestTimer({ timer, onAdd, onSkip }) {
 function WorkoutSummary({ week, dayIndex, profile, session, onEdit }) {
   const d = buildDay(week, dayIndex, profile, session)
   const items = [
-    { ex: d.t1, node: session?.t1 },
+    d.t1 && { ex: d.t1, node: session?.t1 },
     ...d.t2.map((x, i) => ({ ex: x, node: session?.t2?.[i] })),
     ...d.t3.map((x, i) => ({ ex: x, node: session?.t3?.[i] })),
-  ].filter((it) => doneSets(it.node).length > 0)
+  ].filter((it) => it && doneSets(it.node).length > 0)
 
   const total = items.reduce((s, it) => s + setVolume(it.node), 0)
   const vol = loggedDayVolume(dayIndex, profile, session)
@@ -295,10 +294,13 @@ export default function DayView({ week, dayIndex, profile, session, logs, api, o
   const d = buildDay(week, dayIndex, profile, session)
   const [timer, setTimer] = useState(null)
   const [editing, setEditing] = useState(false)
-  const t1Tip = suggestT1(week, dayIndex, profile, logs)
-  const t1Sig = t1Signal(week, dayIndex, profile, logs)
-  const t2aSig = t2aSignal(week, dayIndex, profile, logs)
-  const t2aTip = t2aOverloadTip(week, dayIndex, profile, logs)
+  // T1/T2a coaching + autoreg only apply to the core (T1-bearing) days.
+  const t1Tip = d.t1 ? suggestT1(week, dayIndex, profile, logs) : null
+  const t1Sig = d.t1 ? t1Signal(week, dayIndex, profile, logs) : null
+  const t2aSig = d.t1 ? t2aSignal(week, dayIndex, profile, logs) : null
+  const t2aTip = d.t1 ? t2aOverloadTip(week, dayIndex, profile, logs) : null
+  const weekDays = daysInWeek(week, profile)
+  const pos = weekDays.findIndex((wd) => wd.index === dayIndex)
 
   const acceptSignal = (signal, key) => {
     onAcceptSignal(signal)
@@ -323,11 +325,11 @@ export default function DayView({ week, dayIndex, profile, session, logs, api, o
       <div className="dv-topbar">
         <button className="back-btn" onClick={onBack}>← Week {week}</button>
         <div className="wd-nav">
-          <button onClick={() => onGoDay(dayIndex - 1)} disabled={dayIndex <= 0} aria-label="Previous day">
+          <button onClick={() => onGoDay(weekDays[pos - 1].index)} disabled={pos <= 0} aria-label="Previous day">
             ‹
           </button>
-          <span>Day {dayIndex + 1}</span>
-          <button onClick={() => onGoDay(dayIndex + 1)} disabled={dayIndex >= DAYS.length - 1} aria-label="Next day">
+          <span>Day {pos + 1}</span>
+          <button onClick={() => onGoDay(weekDays[pos + 1].index)} disabled={pos >= weekDays.length - 1} aria-label="Next day">
             ›
           </button>
         </div>
@@ -336,7 +338,7 @@ export default function DayView({ week, dayIndex, profile, session, logs, api, o
       <div className="dv-head">
         <h2>{d.dayLabel}</h2>
         <span className="modal-sub">
-          Session {sessionNumber(week, dayIndex)} of {TOTAL_SESSIONS} · Week {week} · {d.mesoName}
+          Session {sessionNumber(week, dayIndex, profile)} of {totalSessions(profile)} · Week {week} · {d.mesoName}
         </span>
       </div>
 
@@ -350,35 +352,37 @@ export default function DayView({ week, dayIndex, profile, session, logs, api, o
         />
       ) : (
         <>
-          {/* T1 */}
-          <div className="t1-wrap">
-            <CoachBanner tip={t1Tip} />
-            <ExerciseLog
-              week={week}
-              day={dayIndex}
-              refObj={{ tier: 't1' }}
-              exercise={d.t1}
-              node={session?.t1}
-              api={api}
-              onSetComplete={startRest}
-              suggestedTop={t1Tip?.suggested}
-            />
-            <div className="t1-extra">
-              {d.t1.tm != null && <span className="ex-meta">TM {d.t1.tm} lb</span>}
-              {est && <span className="est-chip">est 1RM ≈ {est.rounded} lb</span>}
+          {/* T1 (core days only) */}
+          {d.t1 && (
+            <div className="t1-wrap">
+              <CoachBanner tip={t1Tip} />
+              <ExerciseLog
+                week={week}
+                day={dayIndex}
+                refObj={{ tier: 't1' }}
+                exercise={d.t1}
+                node={session?.t1}
+                api={api}
+                onSetComplete={startRest}
+                suggestedTop={t1Tip?.suggested}
+              />
+              <div className="t1-extra">
+                {d.t1.tm != null && <span className="ex-meta">TM {d.t1.tm} lb</span>}
+                {est && <span className="est-chip">est 1RM ≈ {est.rounded} lb</span>}
+              </div>
+              {d.t1.test && est && (
+                <button className="recalc-btn" onClick={() => onUpdateOneRM(d.t1.key, est.rounded)}>
+                  Update {d.t1.name} 1RM to {est.rounded} lb →
+                </button>
+              )}
+              <SignalCallout
+                signal={t1Sig}
+                status={session?.signals?.t1}
+                onAccept={() => acceptSignal(t1Sig, 't1')}
+                onDismiss={() => dismissSignal('t1')}
+              />
             </div>
-            {d.t1.test && est && (
-              <button className="recalc-btn" onClick={() => onUpdateOneRM(d.t1.key, est.rounded)}>
-                Update {d.t1.name} 1RM to {est.rounded} lb →
-              </button>
-            )}
-            <SignalCallout
-              signal={t1Sig}
-              status={session?.signals?.t1}
-              onAccept={() => acceptSignal(t1Sig, 't1')}
-              onDismiss={() => dismissSignal('t1')}
-            />
-          </div>
+          )}
 
           {/* T2 */}
           {d.t2.length > 0 && (

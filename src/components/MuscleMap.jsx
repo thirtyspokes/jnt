@@ -92,7 +92,9 @@ export default function MuscleMap({ volume, title }) {
                   <td>{g.label}</td>
                   <td>
                     <div className="mt-cell">
-                      <span className="mt-bar" style={{ width: `${Math.max(t * 100, 2)}%`, background: barColor(t) }} />
+                      <span className="mt-track">
+                        <span className="mt-fill" style={{ width: `${t * 100}%`, background: barColor(t) }} />
+                      </span>
                       <span className="mt-val">{fmt(sets)}</span>
                       {sets === 0 && <span className="mt-gap">gap</span>}
                     </div>

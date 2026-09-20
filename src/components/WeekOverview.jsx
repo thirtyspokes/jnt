@@ -1,7 +1,6 @@
 import { metaForWeek } from '../program/progression.js'
-import { DAYS } from '../program/exercises.js'
-import { buildDay } from '../program/generate.js'
-import { nextSession, sessionNumber, TOTAL_SESSIONS } from '../program/sessions.js'
+import { buildDay, daysInWeek } from '../program/generate.js'
+import { nextSession, sessionNumber, totalSessions } from '../program/sessions.js'
 import DayCard from './DayCard.jsx'
 
 const WEEKS = Array.from({ length: 12 }, (_, i) => i + 1)
@@ -11,15 +10,18 @@ const badgeClass = (tier) => (tier === 'T1' ? 't1' : tier === 'T2a' ? 't2a' : ti
 
 function UpNextCard({ week, dayIndex, profile, onOpenDay }) {
   const d = buildDay(week, dayIndex, profile)
+  const num = sessionNumber(week, dayIndex, profile)
   const rows = [
-    { tier: d.t1.tier, name: d.t1.name, detail: d.t1.test ? '1RM test' : `Work to ${d.t1.sets[0].repsTarget}RM` },
+    d.t1 && { tier: d.t1.tier, name: d.t1.name, detail: d.t1.test ? '1RM test' : `Work to ${d.t1.sets[0].repsTarget}RM` },
     ...d.t2.map((x) => ({ tier: x.tier, name: x.name })),
     ...d.t3.map((x) => ({ tier: x.tier, name: x.name })),
-  ]
+  ].filter(Boolean)
   return (
     <button className="up-next-card" onClick={() => onOpenDay(week, dayIndex)}>
       <div className="unc-top">
-        <span className="un-label">Up next · Session {sessionNumber(week, dayIndex)} of {TOTAL_SESSIONS}</span>
+        <span className="un-label">
+          Up next · Session {num} of {totalSessions(profile)}
+        </span>
         <span className="unc-go">Start →</span>
       </div>
       <div className="unc-head">
@@ -40,7 +42,7 @@ function UpNextCard({ week, dayIndex, profile, onOpenDay }) {
 }
 
 export default function WeekOverview({ profile, logs, onOpenWeek, onOpenDay }) {
-  const next = nextSession(logs)
+  const next = nextSession(logs, profile)
 
   return (
     <div className="overview">
@@ -49,7 +51,7 @@ export default function WeekOverview({ profile, logs, onOpenWeek, onOpenDay }) {
       ) : (
         <div className="up-next done">
           <div className="un-label">Program complete 🎉</div>
-          <p className="hint">All {TOTAL_SESSIONS} sessions logged. Time to retest and run it back.</p>
+          <p className="hint">All {totalSessions(profile)} sessions logged. Time to retest and run it back.</p>
         </div>
       )}
 
@@ -71,7 +73,7 @@ export default function WeekOverview({ profile, logs, onOpenWeek, onOpenDay }) {
               <span className="week-chevron" aria-hidden="true">→</span>
             </div>
             <div className="day-cards">
-              {DAYS.map((d) => (
+              {daysInWeek(week, profile).map((d) => (
                 <DayCard key={d.index} week={week} dayIndex={d.index} profile={profile} logs={logs} />
               ))}
             </div>

@@ -4,8 +4,8 @@
 // per week (reusing the progression tables so counts match buildDay). A set
 // credits primary movers 1.0 and secondary movers 0.5.
 
-import { DAYS } from './exercises.js'
-import { T1_WEEKS, T2A_WEEKS, T2_MRS_WEEKS, T3_MRS_WEEKS, MRS_SETS } from './progression.js'
+import { DAYS, DAY5, mergedCustom } from './exercises.js'
+import { T1_WEEKS, T2A_WEEKS, T2_MRS_WEEKS, T3_MRS_WEEKS, MRS_SETS, fifthDayActive } from './progression.js'
 
 // The 12 tracked groups, in the head-to-toe order used by the table.
 export const MUSCLE_GROUPS = [
@@ -134,6 +134,12 @@ export function weeklyVolume(week, profile) {
     }
   })
 
+  // Accessory 5th day (all max-rep-set work).
+  if (profile.fifthDay?.enabled && fifthDayActive(week)) {
+    const custom = mergedCustom(profile.custom)
+    ;(profile.fifthDay.lifts ?? []).forEach((id) => addVolume(vol, id, 1 + MRS_SETS, custom))
+  }
+
   return vol
 }
 
@@ -142,11 +148,21 @@ export function weeklyVolume(week, profile) {
 export function loggedDayVolume(dayIndex, profile, session) {
   const vol = emptyVolume()
   if (!session) return vol
+  const doneSets = (node) =>
+    (node?.sets ?? []).filter((s) => Number(s.weight) > 0 && Number(s.reps) > 0).length
+
+  // Accessory 5th day: lifts come from fifthDay.lifts, logged into t3 slots.
+  if (dayIndex === DAY5.index) {
+    const custom = mergedCustom(profile.custom)
+    ;(profile.fifthDay?.lifts ?? []).forEach((id, i) =>
+      addVolume(vol, id, doneSets(session.t3?.[i]), custom),
+    )
+    return vol
+  }
+
   const day = DAYS[dayIndex]
   const customT2 = profile.custom?.t2 ?? []
   const customT3 = profile.custom?.t3 ?? []
-  const doneSets = (node) =>
-    (node?.sets ?? []).filter((s) => Number(s.weight) > 0 && Number(s.reps) > 0).length
 
   addVolume(vol, day.t1, doneSets(session.t1), [])
   ;(profile.selections?.[dayIndex]?.t2 ?? []).forEach((id, i) =>

@@ -2,7 +2,7 @@
 // Every exercise is expanded into an ordered list of *planned sets* so the UI
 // can render a per-set logging table.
 
-import { DAYS, T1, t2Name, t3Name } from './exercises.js'
+import { DAYS, DAY5, T1, t2Name, t3Name, exerciseName, dayByIndex } from './exercises.js'
 import {
   metaForWeek,
   T1_WEEKS,
@@ -10,8 +10,39 @@ import {
   T2_MRS_WEEKS,
   T3_MRS_WEEKS,
   MRS_SETS,
+  fifthDayActive,
+  fifthDayTarget,
 } from './progression.js'
 import { roundUp, roundNearest } from './rounding.js'
+
+// The lifter's chosen day order (stable ids). Robust to old profiles and keeps
+// the 5th day (id 4) present iff it's enabled.
+export function dayOrderFor(profile) {
+  let order = Array.isArray(profile?.dayOrder) ? profile.dayOrder.filter((i) => i >= 0 && i <= 4) : []
+  for (const i of [0, 1, 2, 3]) if (!order.includes(i)) order.push(i) // ensure the 4 core days
+  const on = !!profile?.fifthDay?.enabled
+  if (on && !order.includes(4)) order.push(4)
+  if (!on) order = order.filter((i) => i !== 4)
+  return order
+}
+
+// The training days that exist in a given week, in the lifter's order (the
+// accessory 5th day appears only when enabled and active that week).
+export function daysInWeek(week, profile) {
+  const fifthOn = profile?.fifthDay?.enabled && fifthDayActive(week)
+  return dayOrderFor(profile)
+    .filter((i) => i !== DAY5.index || fifthOn)
+    .map(dayByIndex)
+}
+
+const typeLabel = (day) =>
+  day.accessory ? 'Weakpoints' : day.dayType === 'lower' ? 'Lower' : 'Upper'
+
+// Positional label for a day within its week, e.g. "Day 2 — Lower".
+export function dayLabel(week, dayIndex, profile) {
+  const pos = daysInWeek(week, profile).findIndex((d) => d.index === dayIndex)
+  return `Day ${pos + 1} — ${typeLabel(dayByIndex(dayIndex))}`
+}
 
 // Training max for a T1 lift, from the entered true 1RM.
 export function trainingMax(oneRM, tmPct) {
@@ -157,13 +188,38 @@ function buildT3(week, day, profile) {
   return ids.map((id) => mrsExercise('T3', t3Name(id, custom), target))
 }
 
+// The accessory day: no T1/T2, every lift run as max-rep-set work on the T3
+// schedule. Lifts live in profile.fifthDay.lifts and log into the t3 slots.
+function buildAccessory(week, profile) {
+  const target = fifthDayTarget(week)
+  if (!target) return []
+  const custom = profile.custom ?? { t2: [], t3: [] }
+  return (profile.fifthDay?.lifts ?? []).map((id) =>
+    mrsExercise('T3', exerciseName(id, custom), target),
+  )
+}
+
 export function buildDay(week, dayIndex, profile, log) {
-  const day = DAYS[dayIndex]
+  const day = dayByIndex(dayIndex)
   const meta = metaForWeek(week)
+  const label = dayLabel(week, dayIndex, profile)
+  if (day.accessory) {
+    return {
+      week,
+      dayIndex,
+      dayLabel: label,
+      dayType: day.dayType,
+      accessory: true,
+      ...meta,
+      t1: null,
+      t2: [],
+      t3: buildAccessory(week, profile),
+    }
+  }
   return {
     week,
     dayIndex,
-    dayLabel: day.label,
+    dayLabel: label,
     dayType: day.dayType,
     ...meta,
     t1: buildT1(week, day, profile, log),
@@ -175,6 +231,17 @@ export function buildDay(week, dayIndex, profile, log) {
 // A compact one-line summary of a day for the week overview grid.
 export function daySummary(week, dayIndex, profile) {
   const d = buildDay(week, dayIndex, profile)
+  if (d.accessory) {
+    return {
+      dayLabel: d.dayLabel,
+      accessory: true,
+      t1Name: 'Weakpoints',
+      topRM: null,
+      test: false,
+      t2Count: 0,
+      t3Count: d.t3.length,
+    }
+  }
   return {
     dayLabel: d.dayLabel,
     t1Name: d.t1.name,

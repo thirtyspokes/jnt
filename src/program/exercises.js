@@ -23,11 +23,17 @@ export const T1 = {
 // The 4-day upper/lower template. Day 3 lower differs from Day 1; Day 4 press
 // differs from Day 2 (per the article's "must be different" rule).
 export const DAYS = [
-  { index: 0, label: 'Day 1 — Lower', t1: 'squat',    dayType: 'lower' },
-  { index: 1, label: 'Day 2 — Upper', t1: 'bench',    dayType: 'upper' },
-  { index: 2, label: 'Day 3 — Lower', t1: 'deadlift', dayType: 'lower' },
-  { index: 3, label: 'Day 4 — Upper', t1: 'ohp',      dayType: 'upper' },
+  { index: 0, name: 'Squat',    t1: 'squat',    dayType: 'lower' },
+  { index: 1, name: 'Bench',    t1: 'bench',    dayType: 'upper' },
+  { index: 2, name: 'Deadlift', t1: 'deadlift', dayType: 'lower' },
+  { index: 3, name: 'OHP',      t1: 'ohp',      dayType: 'upper' },
 ]
+
+// Optional accessory-focused 5th day: no T1, all max-rep-set accessory work.
+export const DAY5 = { index: 4, name: 'Weakpoints', dayType: 'any', accessory: true }
+
+// Resolve a stable day index to its day object.
+export const dayByIndex = (idx) => (idx === DAY5.index ? DAY5 : DAYS[idx])
 
 // ---- T2 options ----
 export const T2_OPTIONS = [
@@ -112,6 +118,28 @@ export function t3For(dayType, custom = []) {
 // Create a stable id for a user-defined exercise.
 export function makeCustomId(tier) {
   return `${tier}_c_${Math.random().toString(36).slice(2, 8)}`
+}
+
+// Cross-tier name resolver (the accessory day's lifts can come from either
+// catalog or the lifter's custom lists).
+export function exerciseName(id, custom = { t2: [], t3: [] }) {
+  return (
+    T2_BY_ID[id]?.name ??
+    T3_BY_ID[id]?.name ??
+    (custom.t2 ?? []).find((e) => e.id === id)?.name ??
+    (custom.t3 ?? []).find((e) => e.id === id)?.name ??
+    id
+  )
+}
+
+// Options for the accessory day: the full T2 + T3 catalogs plus custom lifts.
+export function accessoryOptions(custom = { t2: [], t3: [] }) {
+  return [...T2_OPTIONS, ...T3_OPTIONS, ...(custom.t2 ?? []), ...(custom.t3 ?? [])]
+}
+
+// Custom lists merged into one array (for muscle lookup on the accessory day).
+export function mergedCustom(custom) {
+  return [...(custom?.t2 ?? []), ...(custom?.t3 ?? [])]
 }
 
 // Sensible per-day default selections (used on first run).

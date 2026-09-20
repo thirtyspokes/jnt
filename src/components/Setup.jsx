@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { DAYS, T1, t2For, t3For, makeCustomId } from '../program/exercises.js'
-import { trainingMax } from '../program/generate.js'
+import { ReactSortable } from 'react-sortablejs'
+import { DAYS, T1, t2For, t3For, makeCustomId, accessoryOptions, dayByIndex } from '../program/exercises.js'
+import { trainingMax, dayOrderFor } from '../program/generate.js'
 import { weeklyVolume, MUSCLE_GROUPS } from '../program/muscles.js'
 import { hasAllMaxes } from '../state/useProfile.js'
 import { downloadBackup, copyBackup, parseBackup, applyBackup, backupSummary } from '../state/backup.js'
@@ -110,6 +111,39 @@ export default function Setup({ profile, setProfile, onDone, onReset }) {
       return { ...p, selections: { ...p.selections, [dayIndex]: day } }
     })
   }
+
+  // ---- optional 5th (accessory) day ----
+  const fifthDay = profile.fifthDay ?? { enabled: false, count: 4, lifts: [] }
+  const accOpts = accessoryOptions(custom)
+
+  const setFifthEnabled = (on) =>
+    setProfile((p) => {
+      const next = { ...p, fifthDay: { ...(p.fifthDay ?? {}), enabled: on } }
+      return { ...next, dayOrder: dayOrderFor(next) } // keep the 5th day in/out of the order
+    })
+
+  // ---- day order (drag to reorder) ----
+  const order = dayOrderFor(profile)
+  const orderItems = order.map((idx) => ({ id: idx }))
+  const onReorder = (items) => {
+    const ids = items.map((it) => it.id)
+    if (ids.length === order.length && ids.every((v, i) => v === order[i])) return // unchanged
+    setProfile((p) => ({ ...p, dayOrder: ids }))
+  }
+
+  const setFifthCount = (count) =>
+    setProfile((p) => {
+      const opts = accessoryOptions(p.custom ?? { t2: [], t3: [] })
+      const lifts = resize(p.fifthDay?.lifts ?? [], count, opts)
+      return { ...p, fifthDay: { ...(p.fifthDay ?? {}), count, lifts } }
+    })
+
+  const setFifthLift = (slot, id) =>
+    setProfile((p) => {
+      const lifts = [...(p.fifthDay?.lifts ?? [])]
+      lifts[slot] = id
+      return { ...p, fifthDay: { ...(p.fifthDay ?? {}), lifts } }
+    })
 
   // ---- backup / restore ----
   const [copyMsg, setCopyMsg] = useState('')
@@ -366,6 +400,80 @@ export default function Setup({ profile, setProfile, onDone, onReset }) {
         </div>
       </section>
 
+      {/* ---- optional 5th (accessory) day ---- */}
+      <section className="card">
+        <div className="card-head">
+          <h2>Fifth day <span className="opt-tag">optional</span></h2>
+          <label className="toggle">
+            <input
+              type="checkbox"
+              checked={!!fifthDay.enabled}
+              onChange={(e) => setFifthEnabled(e.target.checked)}
+            />
+            <span>{fifthDay.enabled ? 'On' : 'Off'}</span>
+          </label>
+        </div>
+        <p className="hint">
+          An accessory-focused day with no main lift — ideal for fresh back/arm
+          work. Runs on weeks 1–5 and 8–11 (off on 1RM/deload weeks).
+        </p>
+        {fifthDay.enabled && (
+          <>
+            <div className="count-row">
+              <CountControl
+                label="Accessory lifts"
+                value={fifthDay.count}
+                min={1}
+                max={8}
+                onChange={setFifthCount}
+              />
+            </div>
+            <div className="slot-group fifth-lifts">
+              {(fifthDay.lifts ?? []).map((id, i) => (
+                <div className="slot" key={i}>
+                  <select value={id} onChange={(e) => setFifthLift(i, e.target.value)}>
+                    {accOpts.map((o) => (
+                      <option key={o.id} value={o.id}>
+                        {o.name}{o.custom ? ' ✦' : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+      </section>
+
+      {/* ---- day order ---- */}
+      <section className="card">
+        <h2>Training day order</h2>
+        <p className="hint">
+          Drag the handle to arrange your week. This sets the order the days run
+          in and their session numbers.
+        </p>
+        <ReactSortable
+          list={orderItems}
+          setList={onReorder}
+          handle=".doc-grip"
+          animation={150}
+          className="day-order"
+        >
+          {orderItems.map((it) => {
+            const day = dayByIndex(it.id)
+            return (
+              <div className="day-order-card" key={it.id}>
+                <span className="doc-grip" aria-hidden="true">⠿</span>
+                <span className="doc-name">{day.name}</span>
+                <span className="doc-type">
+                  {day.accessory ? 'Accessory' : day.dayType === 'lower' ? 'Lower' : 'Upper'}
+                </span>
+              </div>
+            )
+          })}
+        </ReactSortable>
+      </section>
+
       {/* ---- muscle coverage ---- */}
       <section className="card">
         <div className="card-head">
@@ -381,7 +489,7 @@ export default function Setup({ profile, setProfile, onDone, onReset }) {
         </div>
         <p className="hint">
           Weekly working sets each muscle group gets from your current picks
-          (primary lifts count 1, secondary ½). Darker = more volume; “gap” flags
+          (primary lifts count 1, secondary ½). Brighter = more volume; “gap” flags
           a group with none.
         </p>
         <MuscleMap volume={weeklyVolume(mapWeek, profile)} />

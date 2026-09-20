@@ -90,6 +90,15 @@ export const T3_MRS_WEEKS = {
 
 export const MRS_SETS = 3 // additional max-rep sets after the top RM
 
+// The optional 5th (accessory) day follows the T3 taper AND stays off on 1RM
+// test weeks, so recovery stays balanced. Active weeks: 1–5, 8–11.
+export function fifthDayActive(week) {
+  return T3_MRS_WEEKS[week] != null && !T1_WEEKS[week].test
+}
+export function fifthDayTarget(week) {
+  return fifthDayActive(week) ? T3_MRS_WEEKS[week] : null
+}
+
 // Rest between sets, in seconds, by tier. Adjust here.
 export const REST_SECONDS = {
   T1: 180,  // 3:00 — main lift

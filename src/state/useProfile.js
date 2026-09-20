@@ -12,6 +12,9 @@ export const DEFAULT_PROFILE = {
   t3Count: 3,
   custom: { t2: [], t3: [] }, // lifter-defined exercises
   selections: DEFAULT_SELECTIONS,
+  dayOrder: [0, 1, 2, 3], // display/session order of days (stable ids 0-3, +4 when 5th on)
+  // Optional accessory-focused 5th day (off by default).
+  fifthDay: { enabled: false, count: 4, lifts: ['bb_row', 'lat_pulldown', 'ez_curl', 'calf_raise'] },
 }
 
 function load() {
