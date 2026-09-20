@@ -48,7 +48,9 @@ input, select { font-family: inherit; }
 
 /* mobile overflow hardening: never scroll sideways, never let a control exceed its box */
 html, body { overflow-x: hidden; }
-input, select, textarea { max-width: 100%; }
+/* iOS Safari zooms the page in when you focus a control whose font-size is < 16px
+   (and leaves it zoomed/cropped). Forcing 16px on every form control prevents that. */
+input, select, textarea { max-width: 100%; font-size: 16px !important; }
 
 .app { width: 100%; max-width: min(1080px, 100vw); margin: 0 auto; padding: 0 16px 64px; }
 
