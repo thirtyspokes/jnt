@@ -1,0 +1,133 @@
+import { useState } from 'react'
+import { useProfile, numericProfile, hasAllMaxes, DEFAULT_PROFILE } from './state/useProfile.js'
+import { useLogs } from './state/useLogs.js'
+import Setup from './components/Setup.jsx'
+import WeekOverview from './components/WeekOverview.jsx'
+import WeekDetail from './components/WeekDetail.jsx'
+import DayView from './components/DayView.jsx'
+import Progress from './components/Progress.jsx'
+import ConfirmModal from './components/ConfirmModal.jsx'
+
+export default function App() {
+  const [profile, setProfile] = useProfile()
+  const [logs, logApi] = useLogs()
+  const ready = hasAllMaxes(profile)
+  const [tab, setTab] = useState('setup') // 'setup' | 'plan' | 'progress'
+  const [weekView, setWeekView] = useState(null) // null = overview, else week number
+  const [dayView, setDayView] = useState(null) // { week, dayIndex } standalone day view
+  const [confirmReset, setConfirmReset] = useState(false)
+
+  const openPlan = () => {
+    setWeekView(null)
+    setDayView(null)
+    setTab('plan')
+  }
+
+  // Open a day; remember its week so "back" from the day returns to that week.
+  const openDay = (week, dayIndex) => {
+    setWeekView(week)
+    setDayView({ week, dayIndex })
+  }
+
+  const np = numericProfile(profile)
+
+  const updateOneRM = (lift, value) => {
+    setProfile((p) => ({ ...p, oneRM: { ...p.oneRM, [lift]: String(value) } }))
+  }
+
+  const startFromScratch = () => {
+    logApi.clearAll()
+    setProfile(structuredClone(DEFAULT_PROFILE))
+    setWeekView(null)
+    setDayView(null)
+    setConfirmReset(false)
+    setTab('setup')
+  }
+
+  const daySession = dayView ? logs[`${dayView.week}-${dayView.dayIndex}`] || null : null
+
+  return (
+    <div className="app">
+      <header className="topbar">
+        <div className="brand">
+          <span className="mark">J&amp;T</span>
+          <div>
+            <h1>Jacked &amp; Tan 2.0</h1>
+            <p className="sub">12-week block · 4-day upper/lower</p>
+          </div>
+        </div>
+        <nav className="tabs">
+          <button className={tab === 'setup' ? 'on' : ''} onClick={() => setTab('setup')}>
+            Setup
+          </button>
+          <button
+            className={tab === 'plan' ? 'on' : ''}
+            onClick={() => ready && openPlan()}
+            disabled={!ready}
+            title={ready ? '' : 'Enter your four 1RMs first'}
+          >
+            Plan
+          </button>
+          <button
+            className={tab === 'progress' ? 'on' : ''}
+            onClick={() => ready && setTab('progress')}
+            disabled={!ready}
+            title={ready ? '' : 'Enter your four 1RMs first'}
+          >
+            Progress
+          </button>
+        </nav>
+      </header>
+
+      <main className="content">
+        {tab === 'setup' && (
+          <Setup
+            profile={profile}
+            setProfile={setProfile}
+            onDone={() => ready && setTab('plan')}
+            onReset={() => setConfirmReset(true)}
+          />
+        )}
+        {tab === 'plan' && dayView != null && (
+          <DayView
+            key={`${dayView.week}-${dayView.dayIndex}`}
+            week={dayView.week}
+            dayIndex={dayView.dayIndex}
+            profile={np}
+            session={daySession}
+            logs={logs}
+            api={logApi}
+            onUpdateOneRM={updateOneRM}
+            onBack={() => setDayView(null)}
+            onGoDay={(dayIndex) => setDayView({ week: dayView.week, dayIndex })}
+          />
+        )}
+        {tab === 'plan' && dayView == null && weekView == null && (
+          <WeekOverview profile={np} logs={logs} onOpenWeek={setWeekView} onOpenDay={openDay} />
+        )}
+        {tab === 'plan' && dayView == null && weekView != null && (
+          <WeekDetail
+            week={weekView}
+            profile={np}
+            logs={logs}
+            onOpenDay={openDay}
+            onBack={() => setWeekView(null)}
+            onGoWeek={setWeekView}
+          />
+        )}
+        {tab === 'progress' && <Progress profile={np} logs={logs} />}
+      </main>
+
+      {confirmReset && (
+        <ConfirmModal
+          title="Start from scratch?"
+          message="This permanently deletes your maxes, exercise choices, custom lifts, and every logged session. This can't be undone."
+          confirmLabel="Delete everything"
+          danger
+          onConfirm={startFromScratch}
+          onCancel={() => setConfirmReset(false)}
+        />
+      )}
+    </div>
+  )
+}
