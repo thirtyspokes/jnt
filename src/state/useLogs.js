@@ -92,6 +92,10 @@ export function useLogs() {
     setComplete: (week, day, done) =>
       mutate(week, day, (s) => { s.completedAt = done ? new Date().toISOString() : null }),
 
+    // Record that an autoreg signal was actioned so it stops showing.
+    setSignal: (week, day, key, status) =>
+      mutate(week, day, (s) => { s.signals = { ...(s.signals || {}), [key]: status } }),
+
     clearAll: () => setLogs({}),
   }
 

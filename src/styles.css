@@ -413,6 +413,7 @@ input, select, textarea { max-width: 100%; font-size: 16px !important; }
 
 /* ---- per-set logging table ---- */
 .ex-note { margin: 0 0 10px; font-size: 12.5px; color: var(--t2a); }
+.ex-prev { margin: 0 0 10px; font-size: 12px; color: var(--muted); }
 .set-table { display: flex; flex-direction: column; gap: 4px; }
 .set-row {
   display: grid;
@@ -461,6 +462,32 @@ input, select, textarea { max-width: 100%; font-size: 16px !important; }
   color: #fff; background: var(--accent); padding: 3px 8px; border-radius: 999px; flex: 0 0 auto;
 }
 .coach strong { color: var(--accent); }
+
+/* ---- autoregulation signal callout ---- */
+.signal {
+  display: flex; align-items: center; gap: 10px; margin: 10px 0 2px;
+  padding: 11px 12px; border-radius: 12px; border: 1px solid;
+}
+.signal.up { background: color-mix(in srgb, var(--t3) 12%, transparent); border-color: color-mix(in srgb, var(--t3) 45%, transparent); }
+.signal.down { background: color-mix(in srgb, #f59e0b 12%, transparent); border-color: color-mix(in srgb, #f59e0b 45%, transparent); }
+.sig-icon { font-size: 18px; flex: 0 0 auto; }
+.sig-body { flex: 1; min-width: 0; }
+.sig-reason { margin: 0; font-size: 13px; font-weight: 600; line-height: 1.4; }
+.sig-change { margin: 2px 0 0; font-size: 12.5px; color: var(--muted); }
+.sig-change strong { color: var(--text); }
+.sig-actions { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; }
+.sig-accept {
+  border: none; padding: 8px 12px; border-radius: 9px; font-weight: 700; font-size: 13px;
+  white-space: nowrap; color: #fff;
+}
+.signal.up .sig-accept { background: var(--t3); }
+.signal.down .sig-accept { background: #d97706; }
+.sig-x {
+  border: none; background: transparent; color: var(--muted);
+  font-size: 18px; line-height: 1; width: 24px; height: 24px; border-radius: 6px;
+}
+.sig-x:hover { background: var(--surface-2); color: var(--text); }
+.tm-adj { color: var(--t3); font-weight: 700; }
 
 /* ---- T1 wrapper: est 1RM + recalc ---- */
 .t1-wrap { margin-bottom: 4px; }

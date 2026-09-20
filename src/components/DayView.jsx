@@ -4,7 +4,8 @@ import { estimated1RM } from '../program/estimate.js'
 import { REST_SECONDS } from '../program/progression.js'
 import { DAYS } from '../program/exercises.js'
 import { loggedDayVolume } from '../program/muscles.js'
-import { suggestT1 } from '../program/coaching.js'
+import { suggestT1, t2aOverloadTip, previousT3Weight } from '../program/coaching.js'
+import { t1Signal, t2aSignal } from '../program/autoreg.js'
 import { sessionNumber, TOTAL_SESSIONS } from '../program/sessions.js'
 import MuscleMap from './MuscleMap.jsx'
 
@@ -18,7 +19,7 @@ const setVolume = (node) =>
 const doneSets = (node) => (node?.sets ?? []).filter((s) => filled(s.weight) && filled(s.reps))
 
 // One exercise's per-set logging table.
-function ExerciseLog({ week, day, refObj, exercise, node, api, onSetComplete, suggestedTop }) {
+function ExerciseLog({ week, day, refObj, exercise, node, api, onSetComplete, suggestedTop, prev }) {
   const [errorRows, setErrorRows] = useState({})
   const planned = exercise.sets
   const actualLen = node?.sets?.length ?? 0
@@ -59,6 +60,11 @@ function ExerciseLog({ week, day, refObj, exercise, node, api, onSetComplete, su
         <span className="ex-rest">rest {fmtClock(REST_SECONDS[exercise.tier] ?? 60)}</span>
       </div>
       {exercise.note && <p className="ex-note">{exercise.note}</p>}
+      {prev !== undefined && (
+        <p className="ex-prev">
+          Last used: {prev ? `${prev.weight} lb (Wk ${prev.week})` : 'none'}
+        </p>
+      )}
 
       <div className="set-table">
         <div className="set-row head">
@@ -243,11 +249,62 @@ function CoachBanner({ tip }) {
   )
 }
 
-export default function DayView({ week, dayIndex, profile, session, logs, api, onUpdateOneRM, onBack, onGoDay }) {
+// Autoregulation callout: a suggested TM change from AMRAP performance.
+function SignalCallout({ signal, status, onAccept, onDismiss }) {
+  if (!signal || status) return null
+  const isBump = signal.type === 'bump'
+  return (
+    <div className={`signal ${isBump ? 'up' : 'down'}`}>
+      <span className="sig-icon" aria-hidden="true">⚡</span>
+      <div className="sig-body">
+        <p className="sig-reason">{signal.reason}</p>
+        <p className="sig-change">
+          {signal.label}: <strong>{signal.current ?? '—'} → {signal.next} lb</strong>
+        </p>
+      </div>
+      <div className="sig-actions">
+        <button className="sig-accept" onClick={onAccept}>{isBump ? `+${signal.delta}` : signal.delta} lb</button>
+        <button className="sig-x" onClick={onDismiss} aria-label="Dismiss">×</button>
+      </div>
+    </div>
+  )
+}
+
+// Forward-looking progressive-overload note for a no-working-max T2a lift.
+function OverloadNote({ tip }) {
+  if (!tip) return null
+  return (
+    <div className="coach">
+      <span className="coach-label">Coach</span>
+      {tip.exceeded ? (
+        <span>
+          Last {tip.exName}: <strong>{tip.prevWeight} × {tip.prevReps}</strong> (Wk {tip.prevWeek}, beat
+          the {tip.prevTarget} target). Add weight — try <strong>{tip.suggested} lb</strong>.
+        </span>
+      ) : (
+        <span>
+          Last {tip.exName}: <strong>{tip.prevWeight} × {tip.prevReps}</strong> (Wk {tip.prevWeek}). Aim
+          to beat it at <strong>{tip.prevWeight} lb</strong>.
+        </span>
+      )}
+    </div>
+  )
+}
+
+export default function DayView({ week, dayIndex, profile, session, logs, api, onUpdateOneRM, onAcceptSignal, onBack, onGoDay }) {
   const d = buildDay(week, dayIndex, profile, session)
   const [timer, setTimer] = useState(null)
   const [editing, setEditing] = useState(false)
   const t1Tip = suggestT1(week, dayIndex, profile, logs)
+  const t1Sig = t1Signal(week, dayIndex, profile, logs)
+  const t2aSig = t2aSignal(week, dayIndex, profile, logs)
+  const t2aTip = t2aOverloadTip(week, dayIndex, profile, logs)
+
+  const acceptSignal = (signal, key) => {
+    onAcceptSignal(signal)
+    api.setSignal(week, dayIndex, key, 'accepted')
+  }
+  const dismissSignal = (key) => api.setSignal(week, dayIndex, key, 'dismissed')
 
   const startRest = (tier) => {
     const total = REST_SECONDS[tier] ?? 60
@@ -315,6 +372,12 @@ export default function DayView({ week, dayIndex, profile, session, logs, api, o
                 Update {d.t1.name} 1RM to {est.rounded} lb →
               </button>
             )}
+            <SignalCallout
+              signal={t1Sig}
+              status={session?.signals?.t1}
+              onAccept={() => acceptSignal(t1Sig, 't1')}
+              onDismiss={() => dismissSignal('t1')}
+            />
           </div>
 
           {/* T2 */}
@@ -322,16 +385,26 @@ export default function DayView({ week, dayIndex, profile, session, logs, api, o
             <div className="ex-group">
               <h4 className="group-title">Secondary — T2</h4>
               {d.t2.map((x, i) => (
-                <ExerciseLog
-                  key={i}
-                  week={week}
-                  day={dayIndex}
-                  refObj={{ tier: 't2', slot: i }}
-                  exercise={x}
-                  node={session?.t2?.[i]}
-                  api={api}
-                  onSetComplete={startRest}
-                />
+                <Fragment key={i}>
+                  {i === 0 && <OverloadNote tip={t2aTip} />}
+                  <ExerciseLog
+                    week={week}
+                    day={dayIndex}
+                    refObj={{ tier: 't2', slot: i }}
+                    exercise={x}
+                    node={session?.t2?.[i]}
+                    api={api}
+                    onSetComplete={startRest}
+                  />
+                  {i === 0 && (
+                    <SignalCallout
+                      signal={t2aSig}
+                      status={session?.signals?.t2a}
+                      onAccept={() => acceptSignal(t2aSig, 't2a')}
+                      onDismiss={() => dismissSignal('t2a')}
+                    />
+                  )}
+                </Fragment>
               ))}
             </div>
           )}
@@ -350,6 +423,7 @@ export default function DayView({ week, dayIndex, profile, session, logs, api, o
                   node={session?.t3?.[i]}
                   api={api}
                   onSetComplete={startRest}
+                  prev={previousT3Weight(week, dayIndex, i, logs)}
                 />
               ))}
             </div>

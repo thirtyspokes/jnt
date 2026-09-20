@@ -19,6 +19,14 @@ export function trainingMax(oneRM, tmPct) {
   return roundNearest(oneRM * tmPct) // displayed & used at 5-lb resolution
 }
 
+// Effective TM for a lift = derived TM + the autoregulation offset (tmAdjust).
+// The true 1RM only changes on a retest; autoreg nudges stack on top here.
+export function tmForLift(profile, liftId) {
+  const base = trainingMax(profile.oneRM?.[liftId], profile.tmPct)
+  if (base == null) return null
+  return base + (profile.tmAdjust?.[liftId] || 0)
+}
+
 const pct = (p) => `${Math.round(p * 100)}%`
 const num = (v) => {
   const n = Number(v)
@@ -55,7 +63,7 @@ function mrsExercise(tier, name, rmTarget) {
 function buildT1(week, day, profile, log) {
   const lift = T1[day.t1]
   const oneRM = profile.oneRM?.[day.t1] ?? null
-  const tm = trainingMax(oneRM, profile.tmPct)
+  const tm = tmForLift(profile, day.t1)
   const w = T1_WEEKS[week]
 
   const sets = [

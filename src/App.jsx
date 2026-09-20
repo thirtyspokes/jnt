@@ -32,7 +32,27 @@ export default function App() {
   const np = numericProfile(profile)
 
   const updateOneRM = (lift, value) => {
-    setProfile((p) => ({ ...p, oneRM: { ...p.oneRM, [lift]: String(value) } }))
+    // A retest sets a fresh true 1RM, so clear that lift's autoreg offset.
+    setProfile((p) => ({
+      ...p,
+      oneRM: { ...p.oneRM, [lift]: String(value) },
+      tmAdjust: { ...(p.tmAdjust || {}), [lift]: 0 },
+    }))
+  }
+
+  // Apply an accepted autoregulation signal (T1 -> TM offset; T2a -> working max).
+  const acceptSignal = (signal) => {
+    if (signal.kind === 't1') {
+      setProfile((p) => ({
+        ...p,
+        tmAdjust: { ...(p.tmAdjust || {}), [signal.lift]: (p.tmAdjust?.[signal.lift] || 0) + signal.delta },
+      }))
+    } else if (signal.kind === 't2a') {
+      setProfile((p) => ({
+        ...p,
+        t2Max: { ...p.t2Max, [signal.exId]: String((Number(p.t2Max?.[signal.exId]) || 0) + signal.delta) },
+      }))
+    }
   }
 
   const startFromScratch = () => {
@@ -98,6 +118,7 @@ export default function App() {
             logs={logs}
             api={logApi}
             onUpdateOneRM={updateOneRM}
+            onAcceptSignal={acceptSignal}
             onBack={() => setDayView(null)}
             onGoDay={(dayIndex) => setDayView({ week: dayView.week, dayIndex })}
           />

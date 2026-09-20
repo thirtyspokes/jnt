@@ -1,5 +1,5 @@
 import { DAYS, T1 } from '../program/exercises.js'
-import { trainingMax } from '../program/generate.js'
+import { tmForLift } from '../program/generate.js'
 import { estimated1RM } from '../program/estimate.js'
 import { numTop } from '../state/useLogs.js'
 
@@ -57,8 +57,7 @@ export default function Progress({ profile, logs }) {
       </p>
       {LIFTS.map((lift) => {
         const pts = series(logs, lift.dayIndex)
-        const oneRM = profile.oneRM?.[lift.key] ?? null
-        const tm = trainingMax(oneRM, profile.tmPct)
+        const tm = tmForLift(profile, lift.key)
         const tested = [...pts].reverse().find((p) => p.test)
         const bestEst = pts.reduce((m, p) => (p.est != null && p.est > m ? p.est : m), 0)
         return (

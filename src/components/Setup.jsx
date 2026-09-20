@@ -187,7 +187,9 @@ export default function Setup({ profile, setProfile, onDone, onReset }) {
           {T1_ORDER.map((lift) => {
             const val = profile.oneRM[lift]
             const n = parseFloat(val)
-            const tm = Number.isFinite(n) && n > 0 ? trainingMax(n, profile.tmPct) : null
+            const adjust = profile.tmAdjust?.[lift] || 0
+            const base = Number.isFinite(n) && n > 0 ? trainingMax(n, profile.tmPct) : null
+            const tm = base != null ? base + adjust : null
             return (
               <div className="max-row" key={lift}>
                 <label>{T1[lift].name}</label>
@@ -203,7 +205,10 @@ export default function Setup({ profile, setProfile, onDone, onReset }) {
                   />
                   <span className="lb">lb</span>
                 </div>
-                <div className="tm">{tm != null ? `TM ${tm}` : '—'}</div>
+                <div className="tm">
+                  {tm != null ? `TM ${tm}` : '—'}
+                  {adjust !== 0 && <span className="tm-adj"> {adjust > 0 ? `+${adjust}` : adjust}</span>}
+                </div>
               </div>
             )
           })}
