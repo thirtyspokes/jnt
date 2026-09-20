@@ -42,7 +42,7 @@ function UpNextCard({ week, dayIndex, profile, onOpenDay }) {
   )
 }
 
-export default function WeekOverview({ profile, logs, cycleNumber, onOpenWeek, onOpenDay, onStartNextCycle }) {
+export default function WeekOverview({ profile, logs, cycleNumber, onOpenWeek, onOpenDay, onSetBodyweight, onStartNextCycle }) {
   const next = nextSession(logs, profile)
 
   return (
@@ -55,6 +55,7 @@ export default function WeekOverview({ profile, logs, cycleNumber, onOpenWeek, o
           profile={profile}
           logs={logs}
           cycleNumber={cycleNumber ?? 1}
+          onSetBodyweight={onSetBodyweight}
           onStartNextCycle={onStartNextCycle}
         />
       )}

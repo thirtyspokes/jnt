@@ -3,7 +3,7 @@ import { testedMax, bestEstimate } from '../program/cycles.js'
 
 const LIFTS = ['squat', 'bench', 'deadlift', 'ohp']
 
-export default function EndOfCycle({ profile, logs, cycleNumber, onStartNextCycle }) {
+export default function EndOfCycle({ profile, logs, cycleNumber, onSetBodyweight, onStartNextCycle }) {
   const baseline = profile.cycleStartMaxes ?? {}
   const rows = LIFTS.map((key) => {
     const now = testedMax(key, logs) ?? bestEstimate(key, logs)
@@ -14,6 +14,10 @@ export default function EndOfCycle({ profile, logs, cycleNumber, onStartNextCycl
   })
   const totalGain = rows.reduce((s, r) => s + (r.delta > 0 ? r.delta : 0), 0)
   const first = cycleNumber === 1
+
+  const bwStart = Number(profile.cycleStartWeight) || null
+  const bwNow = Number(profile.bodyweight) || null
+  const bwDelta = bwStart != null && bwNow != null ? bwNow - bwStart : null
 
   return (
     <div className="eoc">
@@ -42,6 +46,32 @@ export default function EndOfCycle({ profile, logs, cycleNumber, onStartNextCycl
       </div>
 
       {totalGain > 0 && <p className="eoc-total">+{totalGain} lb across your lifts 💪</p>}
+
+      <div className="eoc-bw">
+        <div className="eoc-bw-head">
+          <span className="eoc-bw-label">Bodyweight</span>
+          <div className="eoc-bw-input">
+            <input
+              type="number"
+              inputMode="decimal"
+              min="0"
+              step="0.5"
+              placeholder="current"
+              value={profile.bodyweight ?? ''}
+              onChange={(e) => onSetBodyweight(e.target.value)}
+            />
+            <span className="lb">lb</span>
+          </div>
+        </div>
+        <p className="eoc-bw-delta">
+          {bwStart != null ? `Started at ${bwStart} lb` : 'Enter your start-of-cycle bodyweight in Setup'}
+          {bwDelta != null && (
+            <span className={bwDelta > 0 ? 'up' : bwDelta < 0 ? 'down' : ''}>
+              {' '}· {bwDelta > 0 ? `+${bwDelta}` : bwDelta} lb this cycle
+            </span>
+          )}
+        </p>
+      </div>
 
       <div className="eoc-tip">
         📸 Snap a progress photo before you start the next cycle — for your own records.

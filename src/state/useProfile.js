@@ -6,6 +6,8 @@ const KEY = 'jnt.profile.v1'
 export const DEFAULT_PROFILE = {
   tmPct: 0.9, // Training max = 90% of true 1RM
   oneRM: { squat: '', bench: '', deadlift: '', ohp: '' },
+  bodyweight: '', // current bodyweight (lb)
+  cycleStartWeight: null, // bodyweight snapshot at the start of this cycle
   tmAdjust: { squat: 0, bench: 0, deadlift: 0, ohp: 0 }, // autoreg offsets on top of the derived TM
   t2Max: {}, // optional working maxes for T2a lifts, keyed by exercise id
   t2Count: 2,

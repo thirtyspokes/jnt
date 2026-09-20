@@ -22,13 +22,16 @@ export default function App() {
   const [confirmNextCycle, setConfirmNextCycle] = useState(false)
   const cycleNumber = cycles.length + 1
 
-  // Capture this cycle's starting maxes once the lifter has entered all four,
-  // so end-of-cycle gains have a stable baseline (test-day recalcs won't move it).
+  // Capture this cycle's starting baseline (maxes + bodyweight) once entered, so
+  // end-of-cycle gains have a stable start point that later edits won't move.
   useEffect(() => {
-    if (hasAllMaxes(profile) && !profile.cycleStartMaxes) {
-      setProfile((p) => ({ ...p, cycleStartMaxes: { ...p.oneRM } }))
-    }
+    const updates = {}
+    if (hasAllMaxes(profile) && !profile.cycleStartMaxes) updates.cycleStartMaxes = { ...profile.oneRM }
+    if (Number(profile.bodyweight) > 0 && !profile.cycleStartWeight) updates.cycleStartWeight = profile.bodyweight
+    if (Object.keys(updates).length) setProfile((p) => ({ ...p, ...updates }))
   }, [profile, setProfile])
+
+  const setBodyweight = (value) => setProfile((p) => ({ ...p, bodyweight: value }))
 
   const openPlan = () => {
     setWeekView(null)
@@ -100,6 +103,7 @@ export default function App() {
       tmAdjust: { squat: 0, bench: 0, deadlift: 0, ohp: 0 },
       cycleStartedAt: new Date().toISOString(),
       cycleStartMaxes: { ...oneRM }, // baseline for the new cycle = carried-forward maxes
+      cycleStartWeight: p.bodyweight || null, // new cycle starts at the current bodyweight
     }))
     logApi.clearAll()
     setWeekView(null)
@@ -174,6 +178,7 @@ export default function App() {
             cycleNumber={cycleNumber}
             onOpenWeek={setWeekView}
             onOpenDay={openDay}
+            onSetBodyweight={setBodyweight}
             onStartNextCycle={() => setConfirmNextCycle(true)}
           />
         )}

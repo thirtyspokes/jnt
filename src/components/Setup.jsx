@@ -247,6 +247,21 @@ export default function Setup({ profile, setProfile, onDone, onReset }) {
             )
           })}
         </div>
+        <div className="bw-row">
+          <label>Bodyweight</label>
+          <div className="max-input">
+            <input
+              type="number"
+              inputMode="decimal"
+              min="0"
+              step="0.5"
+              placeholder="optional"
+              value={profile.bodyweight ?? ''}
+              onChange={(e) => setProfile((p) => ({ ...p, bodyweight: e.target.value }))}
+            />
+            <span className="lb">lb</span>
+          </div>
+        </div>
       </section>
 
       {/* ---- counts ---- */}
