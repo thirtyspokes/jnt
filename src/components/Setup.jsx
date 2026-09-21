@@ -55,30 +55,37 @@ export default function Setup({ profile, setProfile, onDone, onReset }) {
   }
 
   // ---- custom exercises ----
-  const [draft, setDraft] = useState({ name: '', tier: 't2', dayType: 'any', muscles: [] })
+  const [draft, setDraft] = useState({ name: '', tier: 't2', dayType: 'any', muscleTags: {} })
   const [mapWeek, setMapWeek] = useState(1)
 
-  const toggleDraftMuscle = (key) =>
-    setDraft((d) => ({
-      ...d,
-      muscles: d.muscles.includes(key) ? d.muscles.filter((k) => k !== key) : [...d.muscles, key],
-    }))
+  // Cycle a muscle tag: off -> primary -> secondary -> off.
+  const cycleDraftMuscle = (key) =>
+    setDraft((d) => {
+      const tags = { ...d.muscleTags }
+      const cur = tags[key]
+      if (!cur) tags[key] = 'primary'
+      else if (cur === 'primary') tags[key] = 'secondary'
+      else delete tags[key]
+      return { ...d, muscleTags: tags }
+    })
 
   const addCustom = () => {
     const name = draft.name.trim()
     if (!name) return
+    const tags = draft.muscleTags
     const entry = {
       id: makeCustomId(draft.tier),
       name,
       dayType: draft.dayType,
-      muscles: draft.muscles,
+      primary: Object.keys(tags).filter((k) => tags[k] === 'primary'),
+      secondary: Object.keys(tags).filter((k) => tags[k] === 'secondary'),
       custom: true,
     }
     setProfile((p) => {
       const cst = p.custom ?? { t2: [], t3: [] }
       return { ...p, custom: { ...cst, [draft.tier]: [...(cst[draft.tier] ?? []), entry] } }
     })
-    setDraft((d) => ({ ...d, name: '', muscles: [] }))
+    setDraft((d) => ({ ...d, name: '', muscleTags: {} }))
   }
 
   const removeCustom = (tier, id) => {
@@ -314,14 +321,19 @@ export default function Setup({ profile, setProfile, onDone, onReset }) {
             Add
           </button>
         </div>
+        <p className="mp-help">
+          Tap a muscle once for a <span className="mp-key primary">primary</span> mover (counts as a
+          full set), again for a <span className="mp-key secondary">secondary</span> mover (half a
+          set), and again to clear it.
+        </p>
         <div className="muscle-pick">
           <span className="mp-label">Targets</span>
           {MUSCLE_GROUPS.map((g) => (
             <button
               key={g.key}
               type="button"
-              className={`mp-chip ${draft.muscles.includes(g.key) ? 'on' : ''}`}
-              onClick={() => toggleDraftMuscle(g.key)}
+              className={`mp-chip ${draft.muscleTags[g.key] ?? ''}`}
+              onClick={() => cycleDraftMuscle(g.key)}
             >
               {g.label}
             </button>
@@ -336,7 +348,7 @@ export default function Setup({ profile, setProfile, onDone, onReset }) {
                   {e.name}
                   <span className="chip-day">
                     {DAY_TYPES.find((o) => o.v === e.dayType)?.label ?? e.dayType}
-                    {!e.muscles?.length && ' · untracked'}
+                    {!(e.primary?.length || e.secondary?.length || e.muscles?.length) && ' · untracked'}
                   </span>
                   <button className="chip-x" title="Remove" onClick={() => removeCustom(tier, e.id)}>
                     ×

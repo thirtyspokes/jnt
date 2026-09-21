@@ -86,11 +86,12 @@ export const EXERCISE_MUSCLES = {
   calf_raise: { primary: ['calves'], secondary: [] },
 }
 
-// Resolve a (possibly custom) exercise to its muscle mapping.
+// Resolve a (possibly custom) exercise to its muscle mapping. Custom exercises
+// carry `primary`/`secondary` tags (older ones used `muscles` = all primary).
 export function musclesFor(id, custom = []) {
   if (EXERCISE_MUSCLES[id]) return EXERCISE_MUSCLES[id]
   const c = custom.find((e) => e.id === id)
-  if (c?.muscles?.length) return { primary: c.muscles, secondary: [] }
+  if (c) return { primary: c.primary ?? c.muscles ?? [], secondary: c.secondary ?? [] }
   return { primary: [], secondary: [] }
 }
 
