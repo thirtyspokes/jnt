@@ -1,4 +1,4 @@
-// Autoregulation signals from AMRAP (the "+" rep-out) performance on T1 and T2a.
+// Autoregulation signal from the T1 AMRAP (the "+" rep-out on the last back-off).
 //
 // Rules (from the J&T 2.0 mesocycle guidance):
 //   Meso A (wk1-3): AMRAP total reps >= 12          -> suggest a TM bump
@@ -6,11 +6,11 @@
 //   Meso B (wk4-6): last 3 AMRAPs never beat target -> suggest a TM reduction
 //   Meso D:         no signal
 // Bump/reduce size: +/-10 lb on lower-body days, +/-5 lb on upper-body days.
-// T1 adjusts the training max (via tmAdjust); T2a adjusts its working max
-// (t2Max), and only fires when a working max is set.
+// Adjusts the training max via tmAdjust (the true 1RM only moves on a retest).
+// (T2a is straight sets — no rep-out — so it gets no autoreg signal.)
 
-import { DAYS, T1, t2Name } from './exercises.js'
-import { metaForWeek, T1_WEEKS, T2A_WEEKS } from './progression.js'
+import { DAYS, T1 } from './exercises.js'
+import { metaForWeek, T1_WEEKS } from './progression.js'
 import { tmForLift } from './generate.js'
 
 // Reps on the AMRAP = the last logged set with reps entered (the rep-out set,
@@ -74,36 +74,6 @@ export function t1Signal(week, dayIndex, profile, logs) {
   return null
 }
 
-export function t2aSignal(week, dayIndex, profile, logs) {
-  const meso = metaForWeek(week).meso
-  if (meso === 'D') return null
-  const t2a = T2A_WEEKS[week]
-  if (!t2a) return null
-  const id = profile.selections?.[dayIndex]?.t2?.[0]
-  if (!id) return null
-  const max = Number(profile.t2Max?.[id])
-  if (!(max > 0)) return null // no working max — handled by a separate coaching note (later)
-
-  const target = t2a.reps
-  const actual = lastAmrapReps(logs?.[`${week}-${dayIndex}`]?.t2?.[0])
-  if (actual == null) return null
-
-  const step = stepFor(dayIndex)
-  const name = t2Name(id, profile.custom?.t2 ?? [])
-  const base = { exId: id, label: `${name} working max`, target, actual, step, current: max }
-
-  if (meso === 'A' && actual >= 12) {
-    return build('t2a', 'bump', base, { next: max + step, reason: `${actual}-rep AMRAP (12+) — the weight is light.` })
-  }
-  if (meso === 'C' && actual - target >= 5) {
-    return build('t2a', 'bump', base, { next: max + step, reason: `${actual} reps, +${actual - target} over target.` })
-  }
-  if (meso === 'B') {
-    const getTarget = (wk) => T2A_WEEKS[wk]?.reps ?? null
-    const getNode = (wk) => logs?.[`${wk}-${dayIndex}`]?.t2?.[0]
-    if (stalled(week, dayIndex, logs, getTarget, getNode)) {
-      return build('t2a', 'reduce', base, { next: max - step, reason: 'No reps past target for 3 sessions — ease the load.' })
-    }
-  }
-  return null
-}
+// NOTE: there is deliberately no T2a autoreg signal. T2a is straight sets (no
+// rep-out), so an AMRAP-based signal doesn't apply — its progression is the %
+// scheme plus updating the working max between cycles.

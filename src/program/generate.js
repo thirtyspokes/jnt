@@ -155,14 +155,14 @@ function buildT2(week, day, profile) {
       const weight = max != null ? roundUp(max * t2a.pct) : null
       const sets = []
       for (let s = 0; s < t2a.sets; s++) {
-        const last = s === t2a.sets - 1
+        // T2a is straight sets — no AMRAP/rep-out on the last set.
         sets.push({
           kind: 'work',
           label: `Set ${s + 1}`,
           weight,
           repsTarget: t2a.reps,
-          repsLabel: last ? `${t2a.reps}+` : `${t2a.reps}`,
-          detail: `${pct(t2a.pct)} × ${t2a.reps}${last ? ' · rep-out' : ''}`,
+          repsLabel: `${t2a.reps}`,
+          detail: `${pct(t2a.pct)} × ${t2a.reps}`,
         })
       }
       out.push({

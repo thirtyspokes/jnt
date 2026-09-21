@@ -56,17 +56,12 @@ export default function App() {
     }))
   }
 
-  // Apply an accepted autoregulation signal (T1 -> TM offset; T2a -> working max).
+  // Apply an accepted autoregulation signal (T1 -> TM offset via tmAdjust).
   const acceptSignal = (signal) => {
     if (signal.kind === 't1') {
       setProfile((p) => ({
         ...p,
         tmAdjust: { ...(p.tmAdjust || {}), [signal.lift]: (p.tmAdjust?.[signal.lift] || 0) + signal.delta },
-      }))
-    } else if (signal.kind === 't2a') {
-      setProfile((p) => ({
-        ...p,
-        t2Max: { ...p.t2Max, [signal.exId]: String((Number(p.t2Max?.[signal.exId]) || 0) + signal.delta) },
       }))
     }
   }

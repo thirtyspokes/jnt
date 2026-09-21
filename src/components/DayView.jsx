@@ -1,10 +1,10 @@
-import { Fragment, useEffect, useState } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
 import { buildDay, daysInWeek } from '../program/generate.js'
 import { estimated1RM } from '../program/estimate.js'
 import { REST_SECONDS } from '../program/progression.js'
 import { loggedDayVolume } from '../program/muscles.js'
 import { suggestT1, t2aOverloadTip, previousT3Weight } from '../program/coaching.js'
-import { t1Signal, t2aSignal } from '../program/autoreg.js'
+import { t1Signal } from '../program/autoreg.js'
 import { sessionNumber, totalSessions } from '../program/sessions.js'
 import MuscleMap from './MuscleMap.jsx'
 
@@ -137,18 +137,49 @@ function ExerciseLog({ week, day, refObj, exercise, node, api, onSetComplete, su
   )
 }
 
+// Two short beeps via Web Audio (ctx must be resumed on a user gesture first).
+function playBeep(ctx) {
+  if (!ctx) return
+  try {
+    const now = ctx.currentTime
+    for (const offset of [0, 0.18]) {
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      osc.type = 'sine'
+      osc.frequency.value = 880
+      gain.gain.setValueAtTime(0.0001, now + offset)
+      gain.gain.exponentialRampToValueAtTime(0.3, now + offset + 0.01)
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + offset + 0.15)
+      osc.connect(gain).connect(ctx.destination)
+      osc.start(now + offset)
+      osc.stop(now + offset + 0.16)
+    }
+  } catch {
+    /* audio unavailable */
+  }
+}
+
 // Fixed bottom rest countdown with a depleting progress bar.
-function RestTimer({ timer, onAdd, onSkip }) {
+function RestTimer({ timer, audioCtx, onAdd, onSkip }) {
   const [now, setNow] = useState(() => Date.now())
+  const beeped = useRef(false)
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 250)
     return () => clearInterval(id)
   }, [timer.endsAt])
+  useEffect(() => { beeped.current = false }, [timer.endsAt]) // re-arm for a new / extended timer
 
   const remainingMs = Math.max(0, timer.endsAt - now)
   const remaining = Math.ceil(remainingMs / 1000)
   const progress = timer.total > 0 ? Math.min(1, remainingMs / (timer.total * 1000)) : 0
   const done = remainingMs <= 0
+
+  useEffect(() => {
+    if (done && !beeped.current) {
+      beeped.current = true
+      playBeep(audioCtx)
+    }
+  }, [done, audioCtx])
 
   return (
     <div className={`rest-timer ${done ? 'done' : ''}`}>
@@ -294,10 +325,34 @@ export default function DayView({ week, dayIndex, profile, session, logs, api, o
   const d = buildDay(week, dayIndex, profile, session)
   const [timer, setTimer] = useState(null)
   const [editing, setEditing] = useState(false)
+  const audioRef = useRef(null)
+  const wakeRef = useRef(null)
+
+  // Keep the screen awake while a rest timer is running (re-acquire on refocus).
+  useEffect(() => {
+    if (!timer) return
+    const request = async () => {
+      try {
+        if ('wakeLock' in navigator && !wakeRef.current) {
+          wakeRef.current = await navigator.wakeLock.request('screen')
+          wakeRef.current.addEventListener?.('release', () => { wakeRef.current = null })
+        }
+      } catch {
+        /* wake lock denied/unsupported */
+      }
+    }
+    const onVis = () => { if (document.visibilityState === 'visible') request() }
+    request()
+    document.addEventListener('visibilitychange', onVis)
+    return () => {
+      document.removeEventListener('visibilitychange', onVis)
+      wakeRef.current?.release?.().catch(() => {})
+      wakeRef.current = null
+    }
+  }, [timer])
   // T1/T2a coaching + autoreg only apply to the core (T1-bearing) days.
   const t1Tip = d.t1 ? suggestT1(week, dayIndex, profile, logs) : null
   const t1Sig = d.t1 ? t1Signal(week, dayIndex, profile, logs) : null
-  const t2aSig = d.t1 ? t2aSignal(week, dayIndex, profile, logs) : null
   const t2aTip = d.t1 ? t2aOverloadTip(week, dayIndex, profile, logs) : null
   const weekDays = daysInWeek(week, profile)
   const pos = weekDays.findIndex((wd) => wd.index === dayIndex)
@@ -309,6 +364,16 @@ export default function DayView({ week, dayIndex, profile, session, logs, api, o
   const dismissSignal = (key) => api.setSignal(week, dayIndex, key, 'dismissed')
 
   const startRest = (tier) => {
+    // Prime/unlock audio on this tap so the completion beep can fire later (iOS).
+    try {
+      if (!audioRef.current) {
+        const AC = window.AudioContext || window.webkitAudioContext
+        if (AC) audioRef.current = new AC()
+      }
+      audioRef.current?.resume?.()
+    } catch {
+      /* audio unavailable */
+    }
     const total = REST_SECONDS[tier] ?? 60
     setTimer({ tier, total, endsAt: Date.now() + total * 1000 })
   }
@@ -400,14 +465,6 @@ export default function DayView({ week, dayIndex, profile, session, logs, api, o
                     api={api}
                     onSetComplete={startRest}
                   />
-                  {i === 0 && (
-                    <SignalCallout
-                      signal={t2aSig}
-                      status={session?.signals?.t2a}
-                      onAccept={() => acceptSignal(t2aSig, 't2a')}
-                      onDismiss={() => dismissSignal('t2a')}
-                    />
-                  )}
                 </Fragment>
               ))}
             </div>
@@ -467,7 +524,9 @@ export default function DayView({ week, dayIndex, profile, session, logs, api, o
         </>
       )}
 
-      {timer && !showSummary && <RestTimer timer={timer} onAdd={addTime} onSkip={() => setTimer(null)} />}
+      {timer && !showSummary && (
+        <RestTimer timer={timer} audioCtx={audioRef.current} onAdd={addTime} onSkip={() => setTimer(null)} />
+      )}
     </div>
   )
 }
