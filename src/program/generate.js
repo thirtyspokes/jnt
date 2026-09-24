@@ -132,6 +132,7 @@ function buildT1(week, day, profile, log) {
         weight,
         repsTarget: b.reps,
         repsLabel: last ? `${b.reps}+` : `${b.reps}`,
+        amrap: last, // last back-off is the rep-out — don't prefill its reps
         detail: last ? `${detail} · rep-out` : detail,
       })
     }

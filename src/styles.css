@@ -536,6 +536,8 @@ input, select, textarea { max-width: 100%; font-size: 16px !important; }
   font-size: 14px;
 }
 .set-row input::placeholder { color: color-mix(in srgb, var(--muted) 60%, transparent); }
+/* prescribed value shown but not yet confirmed (tap ✓ to log it) */
+.set-row input.prefilled { color: var(--muted); }
 .set-x { display: grid; place-items: center; }
 .icon-btn {
   border: none; background: transparent; color: var(--muted);

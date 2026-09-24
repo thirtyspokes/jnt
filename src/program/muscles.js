@@ -149,8 +149,12 @@ export function weeklyVolume(week, profile) {
 export function loggedDayVolume(dayIndex, profile, session) {
   const vol = emptyVolume()
   if (!session) return vol
+  // Count a set toward muscle volume when reps are logged and a weight is entered
+  // (0 is valid — bodyweight moves still count as a set).
   const doneSets = (node) =>
-    (node?.sets ?? []).filter((s) => Number(s.weight) > 0 && Number(s.reps) > 0).length
+    (node?.sets ?? []).filter(
+      (s) => Number(s.reps) > 0 && s.weight !== '' && s.weight != null && Number(s.weight) >= 0,
+    ).length
 
   // Accessory 5th day: lifts come from fifthDay.lifts, logged into t3 slots.
   if (dayIndex === DAY5.index) {

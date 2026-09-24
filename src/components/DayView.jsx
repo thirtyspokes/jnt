@@ -12,10 +12,13 @@ const tierClass = (tier) =>
   tier === 'T1' ? 't1' : tier === 'T2a' ? 't2a' : tier === 'T2' ? 't2' : 't3'
 
 const fmtClock = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
-const filled = (v) => Number(v) > 0
+// A weight of 0 is valid (bodyweight moves); reps must be > 0.
+const enteredWeight = (v) => v !== '' && v != null && Number.isFinite(Number(v)) && Number(v) >= 0
+const enteredReps = (v) => Number(v) > 0
+const performed = (s) => enteredWeight(s.weight) && enteredReps(s.reps)
 const setVolume = (node) =>
-  (node?.sets ?? []).reduce((sum, s) => (filled(s.weight) && filled(s.reps) ? sum + Number(s.weight) * Number(s.reps) : sum), 0)
-const doneSets = (node) => (node?.sets ?? []).filter((s) => filled(s.weight) && filled(s.reps))
+  (node?.sets ?? []).reduce((sum, s) => (performed(s) ? sum + Number(s.weight) * Number(s.reps) : sum), 0)
+const doneSets = (node) => (node?.sets ?? []).filter(performed)
 
 // One exercise's per-set logging table.
 function ExerciseLog({ week, day, refObj, exercise, node, api, onSetComplete, suggestedTop, prev }) {
@@ -37,16 +40,19 @@ function ExerciseLog({ week, day, refObj, exercise, node, api, onSetComplete, su
     clearError(idx)
   }
 
-  const toggleDone = (idx, a) => {
+  // Commit the shown values (falling back to the prefill) and mark done.
+  const toggleDone = (idx, a, prefillWeight, prefillReps) => {
     if (a.done) {
       api.setActualSet(week, day, refObj, idx, { done: false }, exercise.name)
       return
     }
-    if (!filled(a.weight) || !filled(a.reps)) {
+    const w = a.weight !== '' && a.weight != null ? a.weight : prefillWeight != null ? String(prefillWeight) : ''
+    const rp = a.reps !== '' && a.reps != null ? a.reps : prefillReps != null ? String(prefillReps) : ''
+    if (!enteredWeight(w) || !enteredReps(rp)) {
       setErrorRows((e) => ({ ...e, [idx]: true }))
       return
     }
-    api.setActualSet(week, day, refObj, idx, { done: true }, exercise.name)
+    api.setActualSet(week, day, refObj, idx, { weight: w, reps: rp, done: true }, exercise.name)
     clearError(idx)
     onSetComplete(exercise.tier)
   }
@@ -80,6 +86,31 @@ function ExerciseLog({ week, day, refObj, exercise, node, api, onSetComplete, su
           const a = node?.sets?.[r] || { weight: '', reps: '', done: false }
           const err = errorRows[r]
           const presWeight = p.weight != null ? `${p.weight} lb` : '—'
+
+          // Prefill values (shown in the field, editable, committed on ✓).
+          // Weight: concrete prescribed weight for straight/back-off sets, or the
+          // top-set's weight carried down to the max-rep sets. Reps: fixed targets
+          // only (never for a top set, a max-rep set, or an AMRAP rep-out).
+          const isTop = p.kind === 'top'
+          const isMrs = p.kind === 'mrs'
+          let prefillWeight = null
+          if (isMrs) {
+            const topW = node?.sets?.[0]?.weight
+            if (topW != null && topW !== '') prefillWeight = topW
+          } else if (!isTop && !isExtra && p.weight != null) {
+            prefillWeight = p.weight
+          }
+          const prefillReps = !isTop && !isMrs && !isExtra && !p.amrap && p.repsTarget != null ? p.repsTarget : null
+
+          const wEntered = a.weight !== '' && a.weight != null
+          const rEntered = a.reps !== '' && a.reps != null
+          const wShow = wEntered ? a.weight : prefillWeight != null ? String(prefillWeight) : ''
+          const rShow = rEntered ? a.reps : prefillReps != null ? String(prefillReps) : ''
+          const wPre = !wEntered && prefillWeight != null
+          const rPre = !rEntered && prefillReps != null
+          const wOk = enteredWeight(wShow)
+          const rOk = enteredReps(rShow)
+
           return (
             <Fragment key={r}>
               <div className={`set-row ${a.done ? 'done' : ''}`}>
@@ -93,24 +124,26 @@ function ExerciseLog({ week, day, refObj, exercise, node, api, onSetComplete, su
                   inputMode="numeric"
                   min="0"
                   step="2.5"
-                  className={err && !filled(a.weight) ? 'err' : ''}
+                  className={`${err && !wOk ? 'err' : ''} ${wPre ? 'prefilled' : ''}`}
                   placeholder={p.weight != null ? String(p.weight) : r === 0 && suggestedTop ? String(suggestedTop) : ''}
-                  value={a.weight}
+                  value={wShow}
+                  onFocus={wPre ? (e) => e.target.select() : undefined}
                   onChange={(e) => setVal(r, { weight: e.target.value })}
                 />
                 <input
                   type="number"
                   inputMode="numeric"
                   min="0"
-                  className={err && !filled(a.reps) ? 'err' : ''}
+                  className={`${err && !rOk ? 'err' : ''} ${rPre ? 'prefilled' : ''}`}
                   placeholder={p.repsTarget != null ? String(p.repsTarget) : ''}
-                  value={a.reps}
+                  value={rShow}
+                  onFocus={rPre ? (e) => e.target.select() : undefined}
                   onChange={(e) => setVal(r, { reps: e.target.value })}
                 />
                 <button
                   className={`set-check ${a.done ? 'on' : ''}`}
                   title={a.done ? 'Completed — tap to undo' : 'Mark set done & start rest'}
-                  onClick={() => toggleDone(r, a)}
+                  onClick={() => toggleDone(r, a, prefillWeight, prefillReps)}
                 >
                   {a.done ? '✓' : ''}
                 </button>
